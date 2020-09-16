@@ -1,7 +1,9 @@
 package com.example.instagram
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import kotlinx.android.synthetic.main.activity_profile.*
 
 class PersonActivity : BaseActivity(4){
     private val TAG = "PersonActivity"
@@ -10,5 +12,10 @@ class PersonActivity : BaseActivity(4){
         setContentView(R.layout.activity_profile)
         Log.d(TAG, "onCreate")
         setupBottomNavigation()
+
+        edit_button.setOnClickListener{
+            val intent = Intent(this, EditProfileActivity::class.java)
+            startActivity(intent)
+        }
     }
 }

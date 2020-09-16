@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Instagram</string>
+    <string name="username">Username</string>
+    <string name="name">Name</string>
+    <string name="website">Website</string>
+    <string name="bio">Bio</string>
+    <string name="email">Email</string>
+    <string name="phone_number">Phone number</string>
+    <string name="sign_up">Don\'t have an account? <b>Sign up</b>.</string>
 </resources>
