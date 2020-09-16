@@ -12,13 +12,10 @@ import androidx.fragment.app.Fragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.android.synthetic.main.activity_edit_profile.*
-import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.fragment_register_email.*
-import kotlinx.android.synthetic.main.fragment_register_email.email_input
 import kotlinx.android.synthetic.main.fragment_register_namepass.*
 
-class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFragment.Listener{
+class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFragment.Listener {
     private val TAG = "RegisterActivity"
     private var mEmail: String? = null
     private lateinit var mAuth: FirebaseAuth
@@ -38,65 +35,73 @@ class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFr
     }
 
     override fun onNext(email: String) {
-        if(email.isNotEmpty()){
+        if (email.isNotEmpty()) {
             mEmail = email
             supportFragmentManager.beginTransaction().replace(R.id.frame_layout, NamePassFragment())
                 .addToBackStack(null).commit()
-        }
-        else {
+        } else {
             showToast("Please enter email")
         }
     }
 
-    override fun onRegister(name: String, password: String) {
-        if(name.isNotEmpty() && password.isNotEmpty()){
+    override fun onRegister() {
+        val name = register_name_input.text.toString()
+        val password = register_password_input.text.toString()
+        if (password.length < 6) {
+            showToast("Password must contain 6 or more characters.")
+        } else if (name.isNotEmpty()) {
             val email = mEmail
-            if(email != null){
-                mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
-                    if(it.isSuccessful){
+            if (email != null) {
+                mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener {
+                    if (it.isSuccessful) {
                         val user = makeUser(name, email)
                         val reference = mDatabase.child("users").child(it.result!!.user!!.uid)
                         reference.setValue((user))
-                            .addOnCompleteListener{ profile ->
-                                if(profile.isSuccessful){
+                            .addOnCompleteListener { profile ->
+                                if (profile.isSuccessful) {
                                     startHomeActivity()
-                                }else{
-                                    Log.e(TAG, "onRegister: failed to create a profile", profile.exception)
+                                } else {
+                                    Log.e(
+                                        TAG,
+                                        "onRegister: failed to create a profile",
+                                        profile.exception
+                                    )
                                     showToast("Something went wrong while creating a profile. Please try again.")
                                 }
-                        }
-                    }else{
+                            }
+                    } else {
                         Log.e(TAG, "onRegister: failed to create a user", it.exception)
                         showToast("Something went wrong. Please try again.")
                     }
                 }
-            }else{
-                Log.e(TAG, "onRegister: email is null" )
+            } else {
+                Log.e(TAG, "onRegister: email is null")
                 showToast("Please enter email")
                 supportFragmentManager.popBackStack()
             }
-        }else{
+        } else {
             showToast("Please enter full name and password")
         }
     }
 
-    private fun startHomeActivity(){
+    private fun startHomeActivity() {
         startActivity(Intent(this, HomeActivity::class.java))
         finish()
     }
 
     private fun makeUsername(fullname: String) = fullname.toLowerCase().replace(" ", ".")
 
-    private fun makeUser(name: String, email: String): User{
+    private fun makeUser(name: String, email: String): User {
         val username = makeUsername(name)
-        return User(name,username,email)
+        return User(name, username, email)
     }
 }
 
 class EmailFragment : Fragment() {
     private lateinit var mListener: Listener
-    interface Listener{
-        fun onNext(email: String){
+
+    interface Listener {
+        fun onNext(email: String) {
 
         }
     }
@@ -109,8 +114,8 @@ class EmailFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_register_email, container, false)
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?){
-        next_button.setOnClickListener{
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        next_button.setOnClickListener {
             val email = email_input.text.toString()
             mListener.onNext(email)
         }
@@ -125,11 +130,13 @@ class EmailFragment : Fragment() {
 
 class NamePassFragment : Fragment() {
     private lateinit var mListener: Listener
-    interface Listener{
-        fun onRegister(name: String, password: String){
+
+    interface Listener {
+        fun onRegister() {
 
         }
     }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -139,15 +146,13 @@ class NamePassFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-       register_button.setOnClickListener{
-            val name = name_input.text.toString()
-            val password = password_input.text.toString()
-            mListener.onRegister(name, password)
+        register_button.setOnClickListener {
+            mListener.onRegister()
         }
     }
 
-override fun onAttach(context: Context) {
-    super.onAttach(context)
-    mListener = context as Listener
-}
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        mListener = context as Listener
+    }
 }

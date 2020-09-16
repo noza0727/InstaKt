@@ -20,7 +20,7 @@
         android:layout_marginTop="100dp"/>
 
     <EditText
-        android:id="@+id/fuLL_name_input"
+        android:id="@+id/register_name_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Full name"
@@ -33,7 +33,7 @@
         />
 
     <EditText
-        android:id="@+id/textView"
+        android:id="@+id/register_password_input"
         style="@style/login_input"
         android:background="@drawable/details_button_bg"
         android:layout_width="match_parent"
@@ -42,7 +42,7 @@
         android:hint="Password"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/fuLL_name_input" />
+        app:layout_constraintTop_toBottomOf="@+id/register_name_input" />
 
     <Button
         android:id="@+id/register_button"
@@ -50,7 +50,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView"
+        app:layout_constraintTop_toBottomOf="@+id/register_password_input"
         app:layout_constraintEnd_toEndOf="parent"
         style="@style/login_button_style"
         android:background="@drawable/login_button_bg"
