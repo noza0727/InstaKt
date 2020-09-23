@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -29,7 +30,8 @@ class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFr
         mDatabase = FirebaseDatabase.getInstance().reference
 
         if (savedInstanceState == null) {
-            supportFragmentManager.beginTransaction().add(R.id.frame_layout, EmailFragment())
+            supportFragmentManager.beginTransaction()
+                .add(R.id.frame_layout, EmailFragment())
                 .commit()
         }
     }
@@ -37,10 +39,23 @@ class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFr
     override fun onNext(email: String) {
         if (email.isNotEmpty()) {
             mEmail = email
-            supportFragmentManager.beginTransaction().replace(R.id.frame_layout, NamePassFragment())
-                .addToBackStack(null).commit()
-        } else {
-            showToast("Please enter email")
+            mAuth.fetchSignInMethodsForEmail(email){signInMethods ->
+                    if(signInMethods.isEmpty()){
+                        supportFragmentManager.beginTransaction().replace(R.id.frame_layout, NamePassFragment())
+                            .addToBackStack(null).commit()
+                    } else showToast("This email already exists")
+
+            }
+
+        } else showToast("Please enter email")
+
+    }
+
+    private fun FirebaseAuth.fetchSignInMethodsForEmail(email: String, onSuccess: (List<String>) -> Unit){
+        fetchSignInMethodsForEmail(email).addOnCompleteListener{
+            if(it.isSuccessful){
+                onSuccess(it.result?.signInMethods ?: emptyList())
+            } else showToast(it.exception!!.message!!)
         }
     }
 
@@ -52,27 +67,11 @@ class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFr
         } else if (name.isNotEmpty()) {
             val email = mEmail
             if (email != null) {
-                mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener {
-                    if (it.isSuccessful) {
+                mAuth.createUserWithEmailAndPassword(email, password) {
                         val user = makeUser(name, email)
-                        val reference = mDatabase.child("users").child(it.result!!.user!!.uid)
-                        reference.setValue((user))
-                            .addOnCompleteListener { profile ->
-                                if (profile.isSuccessful) {
-                                    startHomeActivity()
-                                } else {
-                                    Log.e(
-                                        TAG,
-                                        "onRegister: failed to create a profile",
-                                        profile.exception
-                                    )
-                                    showToast("Something went wrong while creating a profile. Please try again.")
-                                }
-                            }
-                    } else {
-                        Log.e(TAG, "onRegister: failed to create a user", it.exception)
-                        showToast("Something went wrong. Please try again.")
-                    }
+                        mDatabase.createUser(it.user!!.uid, user) {
+                                startHomeActivity()
+                        }
                 }
             } else {
                 Log.e(TAG, "onRegister: email is null")
@@ -84,6 +83,7 @@ class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFr
         }
     }
 
+
     private fun startHomeActivity() {
         startActivity(Intent(this, HomeActivity::class.java))
         finish()
@@ -93,9 +93,35 @@ class RegisterActivity : AppCompatActivity(), EmailFragment.Listener, NamePassFr
 
     private fun makeUser(name: String, email: String): User {
         val username = makeUsername(name)
-        return User(name, username, email)
+        return User(name = name, username = username, email = email)
+    }
+
+    private fun DatabaseReference.createUser(uid: String, user: User, onSuccess: () -> Unit){
+        val reference = child("users").child(uid)
+        reference.setValue((user)).addOnCompleteListener { profile ->
+            if (profile.isSuccessful) {
+                onSuccess()
+            } else {
+                Log.e(TAG, "onRegister: failed to create a profile", profile.exception)
+                showToast("Something went wrong while creating a profile. Please try again.")
+            }
+        }
+    }
+
+    private fun FirebaseAuth.createUserWithEmailAndPassword(email: String, password: String,
+                                                            onSuccess: (AuthResult) -> Unit ){
+        createUserWithEmailAndPassword(email, password).addOnCompleteListener {
+            if (it.isSuccessful) {
+                it.result?.let { it1 -> onSuccess(it1) }
+            } else {
+                Log.e(TAG, "onRegister: failed to create a user", it.exception)
+                showToast("Something went wrong. Please try again.")
+            }
+        }
     }
 }
+
+
 
 class EmailFragment : Fragment() {
     private lateinit var mListener: Listener
@@ -126,6 +152,7 @@ class EmailFragment : Fragment() {
         mListener = context as Listener
     }
 }
+
 
 
 class NamePassFragment : Fragment() {
