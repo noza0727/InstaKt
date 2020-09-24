@@ -6,7 +6,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.Editable
+import android.text.Html
 import android.util.Log
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
@@ -52,16 +55,15 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
         mDatabase.child("users").child(FirebaseAuth.getInstance().currentUser!!.uid)
             .addListenerForSingleValueEvent( ValueEventListenerAdapter{
                 mUser = it.getValue(User::class.java)!!
-                name_input.setText(mUser!!.name, TextView.BufferType.EDITABLE)
-                username_input.setText(mUser!!.username, TextView.BufferType.EDITABLE)
-                website_input.setText(mUser!!.website, TextView.BufferType.EDITABLE)
-                email_input.setText(mUser!!.email, TextView.BufferType.EDITABLE)
-                phone_input.setText(mUser!!.phone.toString(), TextView.BufferType.EDITABLE)
-                bio_input.setText(mUser!!.bio, TextView.BufferType.EDITABLE)
-
+                name_input.setText(mUser.name, TextView.BufferType.EDITABLE)
+                username_input.setText(mUser.username, TextView.BufferType.EDITABLE)
+                website_input.setText(mUser.website, TextView.BufferType.EDITABLE)
+                email_input.setText(mUser.email, TextView.BufferType.EDITABLE)
+                phone_input.setText(mUser.phone?.toString(), TextView.BufferType.EDITABLE)
+                bio_input.setText(mUser.bio, TextView.BufferType.EDITABLE)
+                profile_image_edit.loadUserPhoto(mUser.photo)
         })
     }
-
 
     private fun updateProfile(){
        mPendingUser = readInputs()
@@ -88,6 +90,8 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
                 mImageUri = FileProvider.getUriForFile(
                     this, "com.example.instagram.fileprovider", imageFile)
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, mImageUri)
+                println(mImageUri)
+                Log.d(TAG, "takeCameraPic: imageUri: $mImageUri ")
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
             }
         }
@@ -113,6 +117,7 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             val uid = mAuth.currentUser!!.uid
             mStorage.child("users/$uid/photo").putFile(mImageUri).addOnCompleteListener {
+                Log.d(TAG, "Passing to File: imageUri: $mImageUri")
                 if (it.isSuccessful) {
                     val ref = mStorage.child("users/$uid/photo")
                     ref.putFile(mImageUri).addOnCompleteListener { put ->
@@ -121,7 +126,13 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
                                 if (download.isSuccessful) {
                                     val photoUrl = it.result.toString()
                                     mDatabase.child("users/$uid/photo").setValue(photoUrl)
-                                } else showToast(it.exception!!.message!!)
+                                        .addOnCompleteListener{ saved->
+                                        if(saved.isSuccessful){
+                                            mUser = mUser.copy(photo = photoUrl)
+                                            profile_image_edit.loadUserPhoto(mUser.photo)
+                                        }else showToast(it.exception!!.message!!)
+                                    }
+                                }else showToast(it.exception!!.message!!)
                             }
                         } else showToast(it.exception!!.message!!)
                     }
@@ -131,14 +142,13 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
     }
 
     private fun readInputs(): User{
-        val phoneStr = phone_input.text.toString()
         return User(
             name = name_input.text.toString(),
             username = username_input.text.toString(),
-            website = website_input.text.toString(),
             email = email_input.text.toString(),
-            phone = if(phoneStr == "") 0 else phoneStr.toLong(),
-            bio = bio_input.text.toString()
+            website = website_input.text.toStringOrNull(),
+            phone = phone_input.text.toString().toLongOrNull(),
+            bio = bio_input.text.toStringOrNull()
         )
     }
 
@@ -150,7 +160,7 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
         }
 
     private fun updateUser(user : User){
-        val updatesMap = mutableMapOf<String, Any>()
+        val updatesMap = mutableMapOf<String, Any?>()
         if(user.name != mUser.name) updatesMap["name"] = user.name
         if(user.username != mUser.username) updatesMap["username"] = user.username
         if(user.website != mUser.website) updatesMap["website"] = user.website
@@ -164,7 +174,7 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
         }
     }
 
-    private fun DatabaseReference.updateUser(uid: String, updates: Map<String, Any>,
+    private fun DatabaseReference.updateUser(uid: String, updates: Map<String, Any?>,
                                              onSuccess: () -> Unit){
         child("users").child(uid).updateChildren(updates)
             .addOnCompleteListener{

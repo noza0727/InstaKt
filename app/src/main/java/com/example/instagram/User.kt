@@ -1,6 +1,6 @@
 package com.example.instagram
 
-class User (val name: String = "", val username: String = "",
-            val website: String = "", val email: String = "",
-            val phone: Long = 0L, val bio: String= "") {
+data class User (val name: String = "", val username: String = "", val email: String = "",
+            val website: String? = null, val phone: Long? = null,
+            val bio: String? = null, val photo: String? = null) {
 }
