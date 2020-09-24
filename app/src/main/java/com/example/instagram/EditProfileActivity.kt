@@ -48,18 +48,18 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
         change_photo_text.setOnClickListener{takeCameraPic()}
         profile_image_edit.setOnClickListener{takeCameraPic()}
 
-        mAuth = FirebaseAuth.getInstance()
-        mDatabase = FirebaseDatabase.getInstance().reference
-        mStorage = FirebaseStorage.getInstance().reference
+                    mAuth = FirebaseAuth.getInstance()
+                    mDatabase = FirebaseDatabase.getInstance().reference
+                    mStorage = FirebaseStorage.getInstance().reference
 
-        mDatabase.child("users").child(FirebaseAuth.getInstance().currentUser!!.uid)
-            .addListenerForSingleValueEvent( ValueEventListenerAdapter{
-                mUser = it.getValue(User::class.java)!!
-                name_input.setText(mUser.name, TextView.BufferType.EDITABLE)
-                username_input.setText(mUser.username, TextView.BufferType.EDITABLE)
-                website_input.setText(mUser.website, TextView.BufferType.EDITABLE)
-                email_input.setText(mUser.email, TextView.BufferType.EDITABLE)
-                phone_input.setText(mUser.phone?.toString(), TextView.BufferType.EDITABLE)
+                    mDatabase.child("users").child(FirebaseAuth.getInstance().currentUser!!.uid)
+                .addListenerForSingleValueEvent( ValueEventListenerAdapter{
+                    mUser = it.getValue(User::class.java)!!
+                    name_input.setText(mUser.name, TextView.BufferType.EDITABLE)
+                    username_input.setText(mUser.username, TextView.BufferType.EDITABLE)
+                    website_input.setText(mUser.website, TextView.BufferType.EDITABLE)
+                    email_input.setText(mUser.email, TextView.BufferType.EDITABLE)
+                    phone_input.setText(mUser.phone?.toString(), TextView.BufferType.EDITABLE)
                 bio_input.setText(mUser.bio, TextView.BufferType.EDITABLE)
                 profile_image_edit.loadUserPhoto(mUser.photo)
         })
@@ -90,7 +90,6 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
                 mImageUri = FileProvider.getUriForFile(
                     this, "com.example.instagram.fileprovider", imageFile)
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, mImageUri)
-                println(mImageUri)
                 Log.d(TAG, "takeCameraPic: imageUri: $mImageUri ")
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
             }
@@ -116,27 +115,23 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             val uid = mAuth.currentUser!!.uid
-            mStorage.child("users/$uid/photo").putFile(mImageUri).addOnCompleteListener {
+            val ref = mStorage.child("users/$uid/photo")
+            ref.putFile(mImageUri).addOnCompleteListener { put ->
                 Log.d(TAG, "Passing to File: imageUri: $mImageUri")
-                if (it.isSuccessful) {
-                    val ref = mStorage.child("users/$uid/photo")
-                    ref.putFile(mImageUri).addOnCompleteListener { put ->
-                        if (put.isSuccessful) {
-                            ref.downloadUrl.addOnCompleteListener { download ->
-                                if (download.isSuccessful) {
-                                    val photoUrl = it.result.toString()
-                                    mDatabase.child("users/$uid/photo").setValue(photoUrl)
-                                        .addOnCompleteListener{ saved->
-                                        if(saved.isSuccessful){
-                                            mUser = mUser.copy(photo = photoUrl)
-                                            profile_image_edit.loadUserPhoto(mUser.photo)
-                                        }else showToast(it.exception!!.message!!)
-                                    }
-                                }else showToast(it.exception!!.message!!)
-                            }
-                        } else showToast(it.exception!!.message!!)
+                if (put.isSuccessful) {
+                    ref.downloadUrl.addOnCompleteListener { download ->
+                        if (download.isSuccessful) {
+                            val photoUrl = put.result.toString()
+                            mDatabase.child("users/$uid/photo").setValue(photoUrl)
+                                .addOnCompleteListener { saved ->
+                                    if (saved.isSuccessful) {
+                                        mUser = mUser.copy(photo = photoUrl)
+                                        profile_image_edit.loadUserPhoto(mUser.photo)
+                                    } else showToast(saved.exception!!.message!!)
+                                }
+                        } else showToast(download.exception!!.message!!)
                     }
-                }
+                } else showToast(put.exception!!.message!!)
             }
         }
     }
@@ -167,6 +162,7 @@ class EditProfileActivity: AppCompatActivity(), PasswordDialog.Listener {
         if(user.bio != mUser.bio) updatesMap["bio"] = user.bio
         if(user.email != mUser.email) updatesMap["email"] = user.email
         if(user.phone != mUser.phone) updatesMap["phone"] = user.phone
+
 
         mDatabase.updateUser(mAuth.currentUser!!.uid, updatesMap){
             showToast("Profile saved")
